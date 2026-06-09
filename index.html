@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Days Since</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1a1a18;
+    --ink2: #6b6b67;
+    --ink3: #b0b0aa;
+    --paper: #f7f6f2;
+    --paper2: #efede8;
+    --accent: #1a1a18;
+    --rule: #e0deda;
+    --danger: #c0392b;
+    --r: 6px;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ── */
+  .site-header {
+    border-bottom: 1px solid var(--rule);
+    padding: 0 2rem;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--paper);
+    z-index: 10;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    color: var(--ink2);
+    text-decoration: none;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem 6rem;
+  }
+
+  /* ── Counter ── */
+  .counter-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+
+  .counter-label span {
+    display: inline-block;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 2px;
+  }
+
+  .big-number {
+    font-family: var(--mono);
+    font-size: clamp(80px, 18vw, 160px);
+    font-weight: 300;
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+    text-align: center;
+    margin-bottom: 1.25rem;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+  }
+
+  .counter-unit {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .since-date {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink3);
+    text-align: center;
+    margin-bottom: 3rem;
+    font-style: italic;
+  }
+
+  .action-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    padding: 9px 18px;
+    border-radius: var(--r);
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--ink2);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--paper2); border-color: var(--ink3); color: var(--ink); }
+  .btn:active { transform: scale(0.98); }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .btn-primary:hover { background: #333330; border-color: #333330; color: var(--paper); }
+
+  .btn-danger { color: var(--danger); border-color: #e8d0cd; }
+  .btn-danger:hover { background: #fdf2f1; border-color: var(--danger); color: var(--danger); }
+
+  .btn svg { flex-shrink: 0; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(12px);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    padding: 10px 20px;
+    border-radius: 40px;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 100;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Modals ── */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(247, 246, 242, 0.85);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    padding: 1.5rem;
+  }
+  .modal-bg.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 360px;
+    transform: translateY(8px);
+    transition: transform 0.2s;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+  }
+  .modal-bg.open .modal { transform: translateY(0); }
+
+  .modal h2 {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 1.25rem;
+  }
+
+  .modal-field { margin-bottom: 1rem; }
+
+  .modal-field label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: 6px;
+  }
+
+  .modal-field input {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 9px 12px;
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    background: var(--paper2);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .modal-field input:focus { border-color: var(--ink3); }
+
+  .modal-field input.error { border-color: var(--danger); }
+
+  .modal-hint {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink3);
+    margin-top: 4px;
+    font-style: italic;
+  }
+  .modal-hint.err { color: var(--danger); }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+  }
+
+  /* ── Setup banner (no counter yet) ── */
+  .setup-prompt {
+    text-align: center;
+    max-width: 320px;
+  }
+  .setup-prompt p {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink3);
+    margin-bottom: 2rem;
+    line-height: 1.7;
+    font-style: italic;
+  }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--rule);
+    padding: 1rem 2rem;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink3);
+    letter-spacing: 0.06em;
+    text-align: center;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    main { padding: 3rem 1.5rem 5rem; }
+    .site-header { padding: 0 1.25rem; }
+    .modal { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="?" class="logo">days since /</a>
+  <div class="header-actions" id="header-actions"></div>
+</header>
+
+<main id="main-content">
+  <!-- Rendered by JS -->
+</main>
+
+<footer id="footer"></footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- ── Setup Modal ── -->
+<div class="modal-bg" id="setup-modal" role="dialog" aria-modal="true" aria-labelledby="setup-title">
+  <div class="modal">
+    <h2 id="setup-title">Create counter</h2>
+    <div class="modal-field">
+      <label for="setup-label">What are you tracking?</label>
+      <input type="text" id="setup-label" placeholder="Last incident" maxlength="80" autocomplete="off">
+    </div>
+    <div class="modal-field">
+      <label for="setup-date">Start date</label>
+      <input type="date" id="setup-date">
+    </div>
+    <div class="modal-field">
+      <label for="setup-pin">Reset PIN (4–8 digits)</label>
+      <input type="password" id="setup-pin" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="e.g. 1234" autocomplete="new-password">
+      <p class="modal-hint">Anyone with the link can view; only you can reset.</p>
+    </div>
+    <div id="setup-err" class="modal-hint err" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn" id="setup-cancel">Cancel</button>
+      <button class="btn btn-primary" id="setup-confirm">Create &amp; share</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Reset (PIN) Modal ── -->
+<div class="modal-bg" id="reset-modal" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+  <div class="modal">
+    <h2 id="reset-title">Reset counter</h2>
+    <div class="modal-field">
+      <label for="reset-date">New start date</label>
+      <input type="date" id="reset-date">
+    </div>
+    <div class="modal-field">
+      <label for="reset-pin">Enter PIN to confirm</label>
+      <input type="password" id="reset-pin" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="····" autocomplete="current-password">
+    </div>
+    <div id="reset-err" class="modal-hint err" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn" id="reset-cancel">Cancel</button>
+      <button class="btn btn-danger" id="reset-confirm">Reset</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function parseHash() {
+  const raw = location.hash.slice(1);
+  if (!raw) return null;
+  try {
+    const params = new URLSearchParams(raw);
+    const label = params.get('l');
+    const start = params.get('s');   // ISO date YYYY-MM-DD
+    const pin   = params.get('p');   // simple hash of PIN
+    if (!label || !start || !pin) return null;
+    return { label, start, pin };
+  } catch(e) { return null; }
+}
+
+function buildHash(label, start, pin) {
+  const params = new URLSearchParams({ l: label, s: start, p: pin });
+  return '#' + params.toString();
+}
+
+// Very lightweight hash: djb2-style, good enough for a casual PIN gate
+function hashPin(pin) {
+  let h = 5381;
+  for (let i = 0; i < pin.length; i++) {
+    h = ((h << 5) + h) + pin.charCodeAt(i);
+    h |= 0;
+  }
+  return (h >>> 0).toString(36);
+}
+
+function daysSince(isoDate) {
+  const start = new Date(isoDate + 'T00:00:00');
+  const now   = new Date();
+  const diff  = now - start;
+  return Math.max(0, Math.floor(diff / 86400000));
+}
+
+function formatDate(isoDate) {
+  const d = new Date(isoDate + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function todayISO() {
+  const d = new Date();
+  return d.toFullYear
+    ? d.toFullYear()
+    : [d.getFullYear(),
+       String(d.getMonth()+1).padStart(2,'0'),
+       String(d.getDate()).padStart(2,'0')].join('-');
+}
+
+// Reliable today ISO
+function isoToday() {
+  const d = new Date();
+  return [d.getFullYear(),
+    String(d.getMonth()+1).padStart(2,'0'),
+    String(d.getDate()).padStart(2,'0')].join('-');
+}
+
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  const first = document.getElementById(id).querySelector('input');
+  if (first) setTimeout(() => first.focus(), 60);
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// Close modal on backdrop click
+document.querySelectorAll('.modal-bg').forEach(bg => {
+  bg.addEventListener('click', e => {
+    if (e.target === bg) bg.classList.remove('open');
+  });
+});
+
+// Escape key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-bg.open').forEach(m => m.classList.remove('open'));
+  }
+});
+
+// ── Copy share URL ──────────────────────────────────────────────────────────
+
+function copyShareURL() {
+  const url = location.href;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => showToast('Link copied to clipboard'));
+  } else {
+    showToast('Copy not available — share the URL manually');
+  }
+}
+
+// ── Render: no counter ──────────────────────────────────────────────────────
+
+function renderSetupScreen() {
+  document.getElementById('main-content').innerHTML = `
+    <div class="setup-prompt">
+      <p>No counter here yet.<br>Create one and share the link.</p>
+      <button class="btn btn-primary" id="open-setup-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+        Create counter
+      </button>
+    </div>
+  `;
+  document.getElementById('header-actions').innerHTML = '';
+  document.getElementById('footer').textContent = '';
+  document.getElementById('open-setup-btn').addEventListener('click', () => {
+    document.getElementById('setup-date').value = isoToday();
+    document.getElementById('setup-cancel').style.display = 'none';
+    openModal('setup-modal');
+  });
+}
+
+// ── Render: active counter ──────────────────────────────────────────────────
+
+function renderCounter(state) {
+  const days = daysSince(state.start);
+
+  document.getElementById('main-content').innerHTML = `
+    <div class="counter-label"><span>${escHtml(state.label)}</span></div>
+    <div class="big-number" id="live-count">${days}</div>
+    <div class="counter-unit">day${days === 1 ? '' : 's'}</div>
+    <div class="since-date">since ${formatDate(state.start)}</div>
+    <div class="action-row">
+      <button class="btn" id="share-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1l4 3-4 3"/><path d="M13 4H5a4 4 0 000 8h2"/></svg>
+        Share link
+      </button>
+      <button class="btn btn-danger" id="reset-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1v4h4"/><path d="M1.5 8A6 6 0 107 1.1"/></svg>
+        Reset
+      </button>
+    </div>
+  `;
+
+  document.getElementById('header-actions').innerHTML = `
+    <button class="btn" id="edit-btn" title="Edit label">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2l2 2-7 7H2V9L9 2z"/></svg>
+      Edit
+    </button>
+  `;
+
+  document.getElementById('footer').innerHTML =
+    `<span>days&#8209;since &mdash; share the link, anyone can view &mdash; only the PIN holder can reset</span>`;
+
+  document.getElementById('share-btn').addEventListener('click', copyShareURL);
+
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    document.getElementById('reset-date').value = isoToday();
+    document.getElementById('reset-pin').value = '';
+    document.getElementById('reset-err').style.display = 'none';
+    document.getElementById('reset-pin').classList.remove('error');
+    openModal('reset-modal');
+  });
+
+  document.getElementById('edit-btn').addEventListener('click', () => {
+    document.getElementById('setup-label').value = state.label;
+    document.getElementById('setup-date').value = state.start;
+    document.getElementById('setup-pin').value = '';
+    document.getElementById('setup-err').style.display = 'none';
+    document.getElementById('setup-cancel').style.display = '';
+    openModal('setup-modal');
+  });
+
+  // Live tick: re-check at midnight
+  scheduleCounterUpdate(state);
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let tickTimer = null;
+function scheduleCounterUpdate(state) {
+  clearTimeout(tickTimer);
+  const now = new Date();
+  const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1) - now;
+  tickTimer = setTimeout(() => {
+    const el = document.getElementById('live-count');
+    if (el) el.textContent = daysSince(state.start);
+    scheduleCounterUpdate(state);
+  }, msUntilMidnight + 500);
+}
+
+// ── Setup modal logic ───────────────────────────────────────────────────────
+
+document.getElementById('setup-confirm').addEventListener('click', () => {
+  const label = document.getElementById('setup-label').value.trim();
+  const start = document.getElementById('setup-date').value;
+  const pin   = document.getElementById('setup-pin').value.trim();
+  const errEl = document.getElementById('setup-err');
+
+  errEl.style.display = 'none';
+
+  if (!label) { showErr(errEl, 'Please enter a label.'); return; }
+  if (!start) { showErr(errEl, 'Please choose a start date.'); return; }
+  if (!/^\d{4,8}$/.test(pin)) { showErr(errEl, 'PIN must be 4–8 digits.'); return; }
+
+  const hash = buildHash(label, start, hashPin(pin));
+  history.replaceState(null, '', hash);
+  closeModal('setup-modal');
+  renderCounter({ label, start, pin: hashPin(pin) });
+  setTimeout(copyShareURL, 300);
+});
+
+document.getElementById('setup-cancel').addEventListener('click', () => closeModal('setup-modal'));
+
+// ── Reset modal logic ───────────────────────────────────────────────────────
+
+document.getElementById('reset-confirm').addEventListener('click', () => {
+  const state = parseHash();
+  if (!state) return;
+
+  const newDate = document.getElementById('reset-date').value;
+  const pin     = document.getElementById('reset-pin').value.trim();
+  const errEl   = document.getElementById('reset-err');
+  const pinInput = document.getElementById('reset-pin');
+
+  errEl.style.display = 'none';
+  pinInput.classList.remove('error');
+
+  if (!newDate) { showErr(errEl, 'Please choose a new start date.'); return; }
+  if (hashPin(pin) !== state.pin) {
+    pinInput.classList.add('error');
+    showErr(errEl, 'Incorrect PIN.');
+    pinInput.value = '';
+    pinInput.focus();
+    return;
+  }
+
+  const hash = buildHash(state.label, newDate, state.pin);
+  history.replaceState(null, '', hash);
+  closeModal('reset-modal');
+  renderCounter({ ...state, start: newDate });
+  setTimeout(copyShareURL, 300);
+  showToast('Counter reset — new link copied');
+});
+
+document.getElementById('reset-cancel').addEventListener('click', () => closeModal('reset-modal'));
+
+// Allow Enter key in PIN fields
+document.getElementById('reset-pin').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('reset-confirm').click();
+});
+document.getElementById('setup-pin').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('setup-confirm').click();
+});
+
+function showErr(el, msg) {
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ── Boot ────────────────────────────────────────────────────────────────────
+
+const state = parseHash();
+if (state) {
+  renderCounter(state);
+} else {
+  renderSetupScreen();
+}
+</script>
+</body>
+</html>
